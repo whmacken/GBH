@@ -1,0 +1,58 @@
+---
+title: "GBH_Helicosts"
+author: "WH MacKenzie"
+date: "26/03/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(ggplot2)
+require(data.table)
+```
+
+## Pull in spreadsheet of daily heli hours
+
+```{r import data}
+heli <- fread("GBH_Helihours_test.csv") %>% as.data.frame
+```
+
+## PLots of heli use
+
+```{r pressure, echo=FALSE}
+###by week daily ski hours
+daily_ski <- heli %>% filter(task_category == "SKI") %>% group_by(date) %>% mutate(dayhours = sum(hours, na.rm = TRUE)) %>%  group_by(year,week) %>% mutate(weekhours = sum(hours, na.rm = TRUE), meanweekhours = sum(hours, na.rm = TRUE)/6) %>% 
+   mutate(mean = weekhours, na.rm = TRUE) %>%
+  ggplot(aes(x = day, y = dayhours)) +
+  geom_line() + 
+  geom_line(aes(y = meanweekhours), color = "blue") +
+    geom_hline(yintercept = 2.5,linetype='dotted', col = 'red')+
+  facet_grid(~year+ week)+
+  ggtitle("Daily helihours for guest ski activities by week. Blue line is daily average over week.")
+daily_ski
+
+weekly_all <- heli %>%  group_by(year, week, task_category) %>% mutate(taskhours = sum(hours, na.rm = TRUE), week2 = paste0(year,"_week", week)) %>% 
+   select(week2, task_category, taskhours) %>% distinct() %>%  data.frame %>% 
+  ggplot(aes(x = week2, y = taskhours, fill = task_category)) +
+  geom_bar(stat = "identity") +
+    geom_hline(yintercept = 17,linetype='dashed', col = 'red', size = 0.8)+
+  #facet_grid(~year)+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))+
+  ggtitle("Total helihours per week by category. Red line is budgeted hours/week.")
+weekly_all
+season_total <- heli %>%  group_by(year,task_category) %>% mutate(taskhours = sum(hours, na.rm = TRUE)) %>% 
+   select(year, task_category, taskhours) %>% distinct() %>%  data.frame %>% 
+  ggplot(aes(x = year, y = taskhours, fill = task_category)) +
+  geom_bar(stat = "identity") +
+   # geom_hline(yintercept = 119,linetype='dotted', col = 'red')+
+  ggtitle("Sum of helihours per year by category. Blue line is daily average over week.")
+season_total
+
+ggsave("DailySkiHours.pdf", plot = daily_ski, device = "pdf")
+ggsave("WeeklyHeliHours.pdf", plot = weekly_all, device = "pdf")
+ggsave("AnnualHeliHours.pdf", plot = season_total, device = "pdf")
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
